@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import requests
@@ -184,7 +185,7 @@ def run_tool(name, args):
 
 
 def chat(user_message):
-    api_key = "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"
+    api_key = os.getenv("OPENROUTER_API_KEY")
     model = "openrouter/free"
     base_url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
