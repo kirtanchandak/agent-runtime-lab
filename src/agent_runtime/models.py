@@ -62,6 +62,8 @@ class Step(BaseModel):
     kind: StepKind
     content: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)
+    # Exact provider message. Resume sends this back unchanged.
+    assistant_message: dict[str, Any] | None = None
     tool_call_id: str | None = None
     tool_name: str | None = None
     output: str | None = None

@@ -2,6 +2,7 @@
 
 Usage:
     uv run python examples/file_agent.py "list the files and summarize them"
+    uv run python examples/file_agent.py --resume <run-id>
 """
 
 import json
@@ -14,14 +15,17 @@ from agent_runtime import (
     OpenRouterProvider,
     ProviderError,
     RunStatus,
+    RunStore,
     Tool,
     ToolArgs,
     ToolRegistry,
     format_trace,
+    sqlite_url,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE = ROOT / "workspace"
+DATABASE = ROOT / "runtime.sqlite3"
 SYSTEM_PROMPT = (
     "You are a file assistant. Use tools to inspect and change files in the workspace. "
     "Paths are relative to that directory. When you know the answer, reply with it and stop calling tools."
@@ -75,7 +79,11 @@ def build_file_tools(workspace: Path) -> ToolRegistry:
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
-        print("usage: uv run python examples/file_agent.py <task>", file=sys.stderr)
+        print(
+            "usage: uv run python examples/file_agent.py <task>\n"
+            "       uv run python examples/file_agent.py --resume <run-id>",
+            file=sys.stderr,
+        )
         return 2
     _load_env(ROOT / ".env")
     try:
@@ -87,8 +95,15 @@ def main(argv: list[str] | None = None) -> int:
         provider=provider,
         tools=build_file_tools(WORKSPACE),
         system_prompt=SYSTEM_PROMPT,
+        store=RunStore(sqlite_url(DATABASE)),
     )
-    run = agent.run(" ".join(args))
+    if args[0] == "--resume":
+        if len(args) != 2:
+            print("usage: uv run python examples/file_agent.py --resume <run-id>", file=sys.stderr)
+            return 2
+        run = agent.resume(args[1])
+    else:
+        run = agent.run(" ".join(args))
     print(format_trace(run))
     return 0 if run.status is RunStatus.COMPLETED else 1
 
@@ -130,7 +145,7 @@ def _load_env(path: Path) -> None:
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key, value = stripped.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+        os.environ[key.strip()] = value.strip().strip("'\"")
 
 
 if __name__ == "__main__":

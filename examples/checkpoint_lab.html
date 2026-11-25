@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkpoint lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #e8e2d6;
+      --card: #fbf8f2;
+      --ink: #1c1915;
+      --muted: #6f675c;
+      --line: #ddd4c6;
+      --green: #1c7a45;
+      --green-bg: #d9f5e3;
+      --amber: #8a5a10;
+      --amber-bg: #f8e7c4;
+      --red: #9d2c2c;
+      --red-bg: #f8d6d2;
+      --blue: #234e78;
+      --blue-bg: #d9e7f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Iowan Old Style", Palatino, Georgia, serif;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      padding: 22px 28px 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+    header p {
+      margin: 6px 0 0;
+      max-width: 640px;
+      color: var(--muted);
+      font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    .legend {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--green);
+      white-space: nowrap;
+    }
+    main {
+      height: calc(100vh - 96px);
+      display: grid;
+      grid-template-columns: 220px minmax(280px, 0.9fr) minmax(420px, 1.2fr);
+      gap: 16px;
+      padding: 0 20px 20px;
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-log, .tables {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+    }
+    .msg {
+      margin: 0 0 12px;
+      max-width: 92%;
+    }
+    .msg.user { margin-left: auto; }
+    .who {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .msg .bubble {
+      border-radius: 12px;
+      padding: 10px 12px;
+      line-height: 1.4;
+      font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+      font-size: 15px;
+    }
+    .user .bubble { background: var(--ink); color: #f7f3ea; }
+    .assistant .bubble { background: #efeae1; }
+    .system .bubble { background: var(--amber-bg); color: #5c3d09; }
+    .thinking .bubble {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+    .dots { display: inline-flex; gap: 4px; }
+    .dots i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      animation: blink 1s infinite;
+    }
+    .dots i:nth-child(2) { animation-delay: 0.15s; }
+    .dots i:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.25; }
+      40% { opacity: 1; }
+    }
+    form, .file {
+      border-top: 1px solid var(--line);
+      padding: 12px;
+    }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    input[type="text"] {
+      flex: 1 1 180px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: 15px "IBM Plex Sans", "Avenir Next", sans-serif;
+      color: var(--ink);
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: var(--ink);
+      color: #f7f3ea;
+      font: 13px "IBM Plex Sans", "Avenir Next", sans-serif;
+      cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    button.session {
+      display: block;
+      width: 100%;
+      margin: 0 0 6px;
+      padding: 8px 10px;
+      text-align: left;
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid transparent;
+      border-radius: 10px;
+    }
+    button.session.active { background: #efeae1; }
+    button.session .title {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      font: 13px "IBM Plex Sans", "Avenir Next", sans-serif;
+    }
+    button.session .meta {
+      margin-top: 4px;
+      font: 11px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--muted);
+    }
+    #session-list { overflow: auto; padding: 0 10px 12px; }
+    #new-chat { margin: 12px 10px; }
+    label.crash {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font: 13px "IBM Plex Sans", "Avenir Next", sans-serif;
+      color: var(--muted);
+    }
+    button:disabled { opacity: 0.45; cursor: wait; }
+    button.more {
+      display: inline;
+      margin-top: 4px;
+      padding: 0;
+      background: none;
+      color: var(--green);
+      font-size: 11px;
+    }
+    button.more:disabled { opacity: 1; cursor: pointer; }
+    .tables { display: flex; flex-direction: column; gap: 16px; overflow: auto; min-width: 0; }
+    table { width: 100%; table-layout: fixed; }
+    .commit {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--green);
+      min-height: 16px;
+    }
+    table { border-collapse: collapse; }
+    #runs th:nth-child(1), #steps th:nth-child(1), #attempts th:nth-child(2) { width: 88px; }
+    #runs th:nth-child(2) { width: 22%; }
+    #steps th:nth-child(2), #steps th:nth-child(3) { width: 72px; }
+    caption {
+      text-align: left;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+    th, td {
+      text-align: left;
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--line);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+      vertical-align: top;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    .clip {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    .clip.open {
+      display: block;
+      -webkit-line-clamp: unset;
+    }
+    th { color: var(--muted); font-weight: 500; }
+    tr.flash { animation: arrive 1.15s ease; }
+    @keyframes arrive {
+      from { background: var(--green-bg); }
+      to { background: transparent; }
+    }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: #eee7dc;
+      white-space: nowrap;
+    }
+    .pill.running, .pill.started { background: var(--amber-bg); color: var(--amber); }
+    .pill.completed { background: var(--green-bg); color: var(--green); }
+    .pill.failed, .pill.unknown { background: var(--red-bg); color: var(--red); }
+    .file {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 12px;
+    }
+    .file strong { font-family: "IBM Plex Sans", "Avenir Next", sans-serif; }
+    .file pre {
+      margin: 8px 0 0;
+      white-space: pre-wrap;
+      min-height: 1.2em;
+      max-height: 5.8em;
+      overflow: hidden;
+    }
+    .file pre.open { max-height: 240px; overflow: auto; }
+    .empty { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Checkpoint lab</h1>
+      <p>This chat calls OpenRouter. A green row is a real commit. Saying hi should just get a reply. A tool row appears only when the model decides to use a tool.</p>
+    </div>
+    <div class="legend">green = committed</div>
+  </header>
+  <main>
+    <section>
+      <button type="button" id="new-chat" class="secondary">New chat</button>
+      <div id="session-list"></div>
+    </section>
+    <section>
+      <div class="chat-log" id="log"></div>
+      <form id="composer">
+        <input id="text" type="text" placeholder="Say hi, or ask it to read a file" autocomplete="off">
+        <button type="submit">Send</button>
+        <label class="crash"><input id="crash" type="checkbox"> Kill before the tool result is saved</label>
+        <button type="button" id="resume" class="secondary">Resume</button>
+        <button type="button" id="reset" class="secondary">Reset</button>
+      </form>
+    </section>
+    <section>
+      <div class="tables">
+        <div class="commit" id="commit"></div>
+        <table id="runs">
+          <caption>runs</caption>
+          <thead><tr><th>id</th><th>task</th><th>status</th><th>result</th><th>error</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button type="button" id="runs-more" class="more" hidden>Show more</button>
+        <table id="steps">
+          <caption>steps</caption>
+          <thead><tr><th>#</th><th>kind</th><th>name</th><th>output</th><th>error</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <table id="attempts">
+          <caption>tool_attempts</caption>
+          <thead><tr><th>tool</th><th>status</th><th>arguments</th><th>output</th><th>key</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="file">
+        <strong>workspace</strong>
+        <button type="button" id="files-more" class="more" hidden>Show more</button>
+        <pre id="note" class="empty">empty</pre>
+      </div>
+    </section>
+  </main>
+  <script>
+    const log = document.querySelector("#log");
+    const commit = document.querySelector("#commit");
+    const note = document.querySelector("#note");
+    const filesMore = document.querySelector("#files-more");
+    const runsMore = document.querySelector("#runs-more");
+    const sessionList = document.querySelector("#session-list");
+    const controls = [...document.querySelectorAll("#composer button, #new-chat, #text, #crash")];
+    let busy = false;
+    let thinkingEl = null;
+    let runsOpen = false;
+    let openId = null;
+    let runs = [];
+    let steps = [];
+    let attempts = [];
+    let booted = false;
+    let paintedId = undefined;
+    const seen = { runs: new Map(), steps: new Map(), attempts: new Map() };
+    const captions = {
+      load: "Loaded the database.",
+      create: "Committed the new run.",
+      save: "Committed the run state.",
+      begin_tool: "Committed “about to call the tool.”",
+      finish_tool: "Committed the tool result.",
+      mark_unknown: "Marked the attempt unknown. The tool was not called again."
+    };
+
+    function setBusy(next) {
+      busy = next;
+      for (const control of controls) control.disabled = next;
+      if (next) showThinking();
+      else hideThinking();
+      renderSessions();
+    }
+
+    function showThinking() {
+      if (thinkingEl) return;
+      thinkingEl = document.createElement("div");
+      thinkingEl.className = "msg assistant thinking";
+      const who = document.createElement("div");
+      who.className = "who";
+      who.textContent = "Agent";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      const label = document.createElement("span");
+      label.textContent = "Thinking";
+      const dots = document.createElement("span");
+      dots.className = "dots";
+      dots.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+      bubble.append(label, dots);
+      thinkingEl.append(who, bubble);
+      log.appendChild(thinkingEl);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function hideThinking() {
+      thinkingEl?.remove();
+      thinkingEl = null;
+    }
+
+    function appendMessage(role, text) {
+      const item = document.createElement("div");
+      item.className = "msg " + role;
+      const who = document.createElement("div");
+      who.className = "who";
+      who.textContent = role === "user" ? "You" : role === "assistant" ? "Agent" : "Runtime";
+      const body = document.createElement("div");
+      body.className = "bubble";
+      body.textContent = text;
+      item.append(who, body);
+      log.appendChild(item);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function addMessage(role, text) {
+      hideThinking();
+      appendMessage(role, text);
+      if (busy) showThinking();
+    }
+
+    function chatPath() {
+      const match = location.pathname.match(/^\/chat\/([^/]+)\/?$/);
+      return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function renderSessions() {
+      sessionList.replaceChildren();
+      const newest = [...runs].reverse();
+      for (const run of newest) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "session" + (run.id === openId ? " active" : "");
+        button.disabled = busy;
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = run.task || "Untitled";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = (run.status || "") + " · " + String(run.id).slice(0, 8);
+        button.append(title, meta);
+        button.addEventListener("click", () => openSession(run.id));
+        sessionList.appendChild(button);
+      }
+    }
+
+    function showTranscript(id) {
+      const run = runs.find((item) => item.id === id);
+      log.replaceChildren();
+      if (!run) {
+        appendMessage("system", "No chat with that id.");
+        return;
+      }
+      appendMessage("user", run.task);
+      const own = steps.filter((step) => step.run_id === id).sort((a, b) => a.index - b.index);
+      for (const step of own) {
+        if (step.kind === "model" && step.content) appendMessage("assistant", step.content);
+        if (step.kind === "model" && step.tool_name) appendMessage("assistant", "Calling " + step.tool_name + ".");
+        if (step.kind === "tool") {
+          appendMessage("system", (step.tool_name || "tool") + ": " + (step.error || step.output || ""));
+        }
+      }
+      if (run.status === "failed" && run.error && !own.some((step) => step.error === run.error)) {
+        appendMessage("assistant", run.error);
+      }
+    }
+
+    function openSession(id) {
+      if (busy) return;
+      openId = id;
+      history.pushState({ id }, "", "/chat/" + id);
+      showTranscript(id);
+      paintDatabase();
+      renderSessions();
+    }
+
+    function newChat() {
+      if (busy) return;
+      openId = null;
+      history.pushState({}, "", "/");
+      log.replaceChildren();
+      paintDatabase();
+      renderSessions();
+    }
+
+    function pill(status) {
+      const span = document.createElement("span");
+      span.className = "pill " + (status || "");
+      span.textContent = status || "";
+      return span;
+    }
+
+    function short(value) {
+      if (!value) return "";
+      return String(value).slice(0, 8);
+    }
+
+    function clip(text) {
+      const value = text == null ? "" : String(text);
+      const wrap = document.createElement("div");
+      if (!value) return wrap;
+      const body = document.createElement("div");
+      body.className = "clip";
+      body.textContent = value;
+      wrap.appendChild(body);
+      const long = value.length > 120 || value.split("\n").length > 4;
+      if (!long) return wrap;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "more";
+        button.textContent = "Show more";
+        button.addEventListener("click", () => {
+          const open = body.classList.toggle("open");
+          button.textContent = open ? "Show less" : "Show more";
+        });
+      wrap.appendChild(button);
+      return wrap;
+    }
+
+    function fill(row, values) {
+      row.replaceChildren();
+      for (const value of values) {
+        const cell = document.createElement("td");
+        if (value instanceof Node) cell.appendChild(value);
+        else cell.appendChild(clip(value));
+        row.appendChild(cell);
+      }
+    }
+
+    function flash(row) {
+      row.classList.remove("flash");
+      void row.offsetWidth;
+      row.classList.add("flash");
+    }
+
+    function render(tableName, rows, keyFn, cellsFn, quiet) {
+      const body = document.querySelector("#" + tableName + " tbody");
+      const known = seen[tableName];
+      for (const row of rows) {
+        const key = keyFn(row);
+        const serial = JSON.stringify(row);
+        const current = known.get(key);
+        if (!current) {
+          const element = document.createElement("tr");
+          fill(element, cellsFn(row));
+          body.appendChild(element);
+          known.set(key, { element, serial });
+          if (!quiet) flash(element);
+        } else if (current.serial !== serial) {
+          fill(current.element, cellsFn(row));
+          current.serial = serial;
+          if (!quiet) flash(current.element);
+        }
+      }
+    }
+
+    function paintDatabase() {
+      if (paintedId !== openId) {
+        for (const name of ["runs", "steps", "attempts"]) {
+          seen[name].clear();
+          document.querySelector("#" + name + " tbody").replaceChildren();
+        }
+        paintedId = openId;
+      }
+      const quiet = false;
+      render("runs", openId ? runs.filter((row) => row.id === openId) : [], (row) => row.id, (row) => [
+        short(row.id), row.task, pill(row.status), row.result, row.error
+      ], quiet);
+      render("steps", openId ? steps.filter((row) => row.run_id === openId) : [], (row) => row.run_id + ":" + row.index, (row) => [
+        row.index, row.kind, row.tool_name, row.output || row.content, row.error
+      ], quiet);
+      render("attempts", openId ? attempts.filter((row) => row.run_id === openId) : [], (row) => row.id, (row) => [
+        row.tool_name, pill(row.status), JSON.stringify(row.arguments), row.output, short(row.idempotency_key)
+      ], quiet);
+      limitRuns();
+    }
+
+    function limitRuns() {
+      const rows = [...document.querySelectorAll("#runs tbody tr")];
+      const extra = Math.max(0, rows.length - 3);
+      rows.forEach((row, index) => {
+        row.hidden = !runsOpen && index < extra;
+      });
+      runsMore.hidden = extra === 0;
+      runsMore.textContent = runsOpen ? "Show less" : `Show ${extra} more`;
+    }
+
+    function showFile(text) {
+      const value = text || "empty";
+      note.textContent = value;
+      note.classList.toggle("empty", !text);
+      note.classList.remove("open");
+      const long = Boolean(text) && (text.length > 180 || text.split("\n").length > 4);
+      filesMore.hidden = !long;
+      filesMore.textContent = "Show more";
+    }
+
+    function apply(event) {
+      if (event.type === "chat") {
+        if (!openId && event.run_id) {
+          openId = event.run_id;
+          history.pushState({ id: event.run_id }, "", "/chat/" + event.run_id);
+          renderSessions();
+        }
+        if (event.run_id && openId && event.run_id !== openId) return;
+        if (event.role === "user" && event.run_id == null) return;
+        addMessage(event.role, event.text);
+        return;
+      }
+      if (event.type === "idle") {
+        setBusy(false);
+        return;
+      }
+      if (event.type === "file") {
+        showFile(event.files);
+        return;
+      }
+      if (event.type === "reset") {
+        for (const name of ["runs", "steps", "attempts"]) {
+          seen[name].clear();
+          document.querySelector("#" + name + " tbody").replaceChildren();
+        }
+        log.replaceChildren();
+        runsOpen = false;
+        openId = null;
+        runs = [];
+        steps = [];
+        attempts = [];
+        paintedId = undefined;
+        history.pushState({}, "", "/");
+        limitRuns();
+        renderSessions();
+        commit.textContent = "Database cleared.";
+      showFile(event.files || "");
+      setBusy(false);
+      return;
+    }
+    runs = event.runs || [];
+    steps = event.steps || [];
+    attempts = event.attempts || [];
+    const first = !booted;
+    if (!booted) {
+      booted = true;
+      const id = chatPath();
+      if (id) openId = id;
+    }
+    if (!openId && event.run_id && event.source && event.source !== "load") {
+      openId = event.run_id;
+      history.pushState({ id: event.run_id }, "", "/chat/" + event.run_id);
+    }
+    paintDatabase();
+    if (first && openId) showTranscript(openId);
+    renderSessions();
+    if (event.files !== undefined) showFile(event.files);
+    if (event.source) commit.textContent = captions[event.source] || event.source;
+  }
+
+    async function post(path, payload) {
+      setBusy(true);
+      const response = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        addMessage("system", body.error || "Request failed.");
+        setBusy(false);
+      }
+    }
+
+    document.querySelector("#composer").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.querySelector("#text");
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      openId = null;
+      history.pushState({}, "", "/");
+      log.replaceChildren();
+      appendMessage("user", text);
+      paintDatabase();
+      renderSessions();
+      post("/api/chat", { text, crash: document.querySelector("#crash").checked });
+    });
+    filesMore.addEventListener("click", () => {
+      const open = note.classList.toggle("open");
+      filesMore.textContent = open ? "Show less" : "Show more";
+    });
+    runsMore.addEventListener("click", () => {
+      runsOpen = !runsOpen;
+      limitRuns();
+    });
+    document.querySelector("#new-chat").addEventListener("click", newChat);
+    window.addEventListener("popstate", () => {
+      const id = chatPath();
+      if (id) openSession(id);
+      else newChat();
+    });
+    document.querySelector("#resume").addEventListener("click", () => post("/api/resume"));
+    document.querySelector("#reset").addEventListener("click", () => post("/api/reset"));
+
+    const source = new EventSource("/events");
+    source.onmessage = (message) => apply(JSON.parse(message.data));
+  </script>
+</body>
+</html>
